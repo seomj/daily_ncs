@@ -42,7 +42,7 @@ jobs:
           
           # 3. 모델 호출
           response = client.models.generate_content(
-              model='gemini-2.0-flash', 
+              model='gemini-2.5-flash-lite', 
               contents=user_prompt
           )
           full_text = response.text
