@@ -19,17 +19,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install Gemini Library
-        run: pip install -q -U google-generativeai
+        run: pip install -q -U google-genai
 
       - name: Request to Gemini API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python - <<EOF
-          import google.generativeai as genai
+          from genai import Client
           import os
           from datetime import datetime
 
@@ -37,30 +37,31 @@ jobs:
           with open('prompt.txt', 'r', encoding='utf-8') as f:
               user_prompt = f.read()
 
-          genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-          model = genai.GenerativeModel('gemini-1.5-flash')
+          # 2. 최신 SDK 클라이언트 설정
+          client = Client(api_key=os.environ["GEMINI_API_KEY"])
           
-          # 2. Gemini 호출
-          response = model.generate_content(user_prompt)
+          # 3. 모델 호출
+          response = client.models.generate_content(
+              model='gemini-2.0-flash', 
+              contents=user_prompt
+          )
           full_text = response.text
           
-          # 3. 문제와 정답 분리 (### 정답 확인 헤더 기준)
+          # 4. 문제와 정답 분리
           delimiter = "### 정답 확인"
           parts = full_text.split(delimiter)
           
           problems = parts[0]
-          answers = delimiter + parts[1] if len(parts) > 1 else "정답이 생성되지 않았습니다."
+          answers = delimiter + parts[1] if len(parts) > 1 else "정답 생성 실패"
 
-          # 4. 파일 저장
+          # 5. 파일 저장
           date_str = datetime.now().strftime("%Y-%m-%d")
           os.makedirs('problems', exist_ok=True)
           os.makedirs('answers', exist_ok=True)
 
-          # 문제 파일 저장
           with open(f"problems/{date_str}_problems.md", "w", encoding="utf-8") as f:
               f.write(f"# {date_str} NCS 연습문제\n\n" + problems)
 
-          # 정답 파일 저장
           with open(f"answers/{date_str}_answers.md", "w", encoding="utf-8") as f:
               f.write(f"# {date_str} NCS 정답지\n\n" + answers)
           EOF
