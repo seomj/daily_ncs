@@ -7,6 +7,9 @@ on:
     - cron: '0 23 * * *'
   workflow_dispatch: # 버튼을 눌러 수동으로도 실행 가능하게 설정
 
+permissions:
+  contents: write
+
 # 2. 어떤 일을 할 것인가?
 jobs:
   build-and-run:
