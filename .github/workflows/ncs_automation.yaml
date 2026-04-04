@@ -1,0 +1,74 @@
+name: Daily NCS Problem Generator
+
+# 1. 언제 실행할 것인가?
+on:
+  schedule:
+    # cron: '분 시 일 월 요일' (UTC 기준이므로 한국 시간 08:00은 UTC 23:00)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # 버튼을 눌러 수동으로도 실행 가능하게 설정
+
+# 2. 어떤 일을 할 것인가?
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest # 가상 실행 환경 설정
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # 내 코드를 가상 환경으로 가져옴
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Gemini Library
+        run: pip install -q -U google-generativeai
+
+      - name: Request to Gemini API
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<EOF
+          import google.generativeai as genai
+          import os
+          from datetime import datetime
+
+          # 1. 프롬프트 읽기
+          with open('prompt.txt', 'r', encoding='utf-8') as f:
+              user_prompt = f.read()
+
+          genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+          model = genai.GenerativeModel('gemini-1.5-flash')
+          
+          # 2. Gemini 호출
+          response = model.generate_content(user_prompt)
+          full_text = response.text
+          
+          # 3. 문제와 정답 분리 (### 정답 확인 헤더 기준)
+          delimiter = "### 정답 확인"
+          parts = full_text.split(delimiter)
+          
+          problems = parts[0]
+          answers = delimiter + parts[1] if len(parts) > 1 else "정답이 생성되지 않았습니다."
+
+          # 4. 파일 저장
+          date_str = datetime.now().strftime("%Y-%m-%d")
+          os.makedirs('problems', exist_ok=True)
+          os.makedirs('answers', exist_ok=True)
+
+          # 문제 파일 저장
+          with open(f"problems/{date_str}_problems.md", "w", encoding="utf-8") as f:
+              f.write(f"# {date_str} NCS 연습문제\n\n" + problems)
+
+          # 정답 파일 저장
+          with open(f"answers/{date_str}_answers.md", "w", encoding="utf-8") as f:
+              f.write(f"# {date_str} NCS 정답지\n\n" + answers)
+          EOF
+
+      - name: Push results to Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add problems/*.md
+          git commit -m "Add NCS problems for $(date +'%Y-%m-%d')"
+          git push
