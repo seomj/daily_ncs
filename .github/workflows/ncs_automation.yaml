@@ -38,7 +38,7 @@ jobs:
               user_prompt = f.read()
 
           # 2. 최신 SDK 클라이언트 설정
-          client = Client(api_key=os.environ["GEMINI_API_KEY"])
+          client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
           
           # 3. 모델 호출
           response = client.models.generate_content(
